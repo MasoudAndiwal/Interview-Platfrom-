@@ -55,7 +55,7 @@ function AuthForm({ type }: { type: AuthType }) {
         router.push('/sign-in')
       }else{
         toast.success('successfull sign in ')
-        router.push('/interview')
+        router.push('/')
       }
     } catch (error) {
       toast.error(`There was an error : ${error}`)
