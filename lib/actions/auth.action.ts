@@ -5,7 +5,11 @@ import { User } from "firebase/auth";
 import { cookies } from "next/headers";
 const OneWeek = 60 * 60 * 24 * 7; // Corrected to seconds in a week
 
-
+export interface AppUser {
+  id: string;
+  name?: string;
+  email?: string;
+}
 
 export async function signUp(params: SignUpParams) {
   const { name, email, password } = params;
@@ -47,61 +51,63 @@ export async function signUp(params: SignUpParams) {
     };
   }
 }
-export async function signIn(params : SignInParams){
-    const {email , idToken} = params;
-    try {
-        const userRecord = await auth.getUserByEmail(email);
-        if(!userRecord){
-            return{
-                success : false,
-                message : 'User not found.'
-            }
-        }
-        await setSessionCookie(idToken);
-        return { success: true, message: 'Signed in successfully.' };  
-    } catch (e) {
-        console.error('Sign-in error:', e);
-        return{
-            success : false,
-            message : 'Failed to log into an account'
-        }
-    }
-}
-export async function setSessionCookie(idToken : string){
-    const cookieStor = await cookies();
-    const sessionCookie = await auth.createSessionCookie(idToken , {
-        expiresIn : OneWeek * 1000
-    })
-    cookieStor.set('session' , sessionCookie , {
-        httpOnly : true,
-        secure : process.env.NODE_ENV === 'production',
-        path : '/',
-        sameSite : 'lax',
-        maxAge : OneWeek * 1000
-    })
 
-}
-export async function getCurrentUser():Promise<User | null>{
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('session')?.value;
-    if(!sessionCookie){
-        return null;
+export async function signIn(params: SignInParams) {
+  const { email, idToken } = params;
+  try {
+    const userRecord = await auth.getUserByEmail(email);
+    if (!userRecord) {
+      return {
+        success: false,
+        message: 'User not found.'
+      }
     }
-    try {
-        const decodedToken = await auth.verifySessionCookie(sessionCookie , true);
-        const userRecord = await db.collection('users').doc(decodedToken.uid).get();
-        if(!userRecord.exists) return null;
-        return {
-          ...userRecord.data(),
-          id: userRecord.id
-        } as unknown as User;
-    } catch (e) {
-        console.log(e);
-        return null;
+    await setSessionCookie(idToken);
+    return { success: true, message: 'Signed in successfully.' };
+  } catch (e) {
+    console.error('Sign-in error:', e);
+    return {
+      success: false,
+      message: 'Failed to log into an account'
     }
+  }
 }
 
-export async function isAuthenticated(){
+export async function setSessionCookie(idToken: string) {
+  const cookieStor = await cookies();
+  const sessionCookie = await auth.createSessionCookie(idToken, {
+    expiresIn: OneWeek * 1000
+  })
+  cookieStor.set('session', sessionCookie, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    sameSite: 'lax',
+    maxAge: OneWeek * 1000
+  })
+}
+
+export async function getCurrentUser(): Promise<AppUser | null> {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('session')?.value;
+  if (!sessionCookie) {
+    return null;
+  }
+  try {
+    const decodedToken = await auth.verifySessionCookie(sessionCookie, true);
+    const userRecord = await db.collection('users').doc(decodedToken.uid).get();
+    if (!userRecord.exists) return null;
+    return {
+      ...userRecord.data(),
+      id: userRecord.id
+    } as AppUser;
+  } catch (e) {
+    console.log(e);
+    return null;
+  }
+}
+
+export async function isAuthenticated() {
   try {
     const User = await getCurrentUser();
     return !!User;
